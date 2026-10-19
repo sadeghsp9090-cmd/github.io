@@ -21,14 +21,10 @@ DESCRIPTION = (
 SHORT = "تبلیغات حرفه‌ای کسب‌وکار شما در پیج «درباره اصفهان»"
 MENU = {
     "price": "تعرفه تبلیغات چنده؟",
-    "post": "درباره پست تبلیغاتی دائمی توضیح بدید",
-    "story": "استوری گویشی و استوری بنری چیه؟",
     "pay": "میخوام سفارش بدم، پرداخت چطوریه؟",
 }
 KEYBOARD = InlineKeyboardMarkup([
     [InlineKeyboardButton("💰 تعرفه‌ها", callback_data="price")],
-    [InlineKeyboardButton("🎬 پست تبلیغاتی دائمی", callback_data="post"),
-     InlineKeyboardButton("📱 استوری", callback_data="story")],
     [InlineKeyboardButton("✅ ثبت سفارش", callback_data="pay")],
 ])
 PRICE_LIST = """تعرفه تبلیغات✅

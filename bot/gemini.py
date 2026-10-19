@@ -11,6 +11,8 @@ _ALLOWED = {("2", "میلیون"), ("1", "میلیون"), ("500", "هزار")}
 def prices_ok(text):
     """Reject answers that quote a money amount other than the real tariffs."""
     t = text.translate(_FA)
+    if re.search(r"\d{4}[\s-]?\d{4}[\s-]?\d{4}", t):
+        return False
     for num, unit in re.findall(r"(\d+(?:\.\d+)?)\s*(میلیون|هزار)", t):
         if (num, unit) not in _ALLOWED:
             return False
@@ -26,7 +28,7 @@ SYSTEM = (
     "اگه مشتری مردد بود یا گفت گرونه، با ارزش کار و قیمت ویژه جواب بده، ولی هیچ‌وقت قیمت رو کم یا تخفیف نده و چیزی از خودت نساز. "
     "فقط بر اساس اطلاعات داده‌شده جواب بده؛ اگه جوابش رو نداری بگو «از ادمین می‌پرسم و بهت خبر می‌دم». "
     "سلام و احوال‌پرسی فقط یک‌بار: اگه تو تاریخچه‌ی گفتگو قبلاً سلام شده، هرگز دوباره سلام نکن و مستقیم برو سراغ جواب. "
-    "هیچ وعده‌ی نتیجه یا آماری نده (مثل «هزینه‌تون برمی‌گرده» یا «فروشتون بالا می‌ره»). ترتیب کار: پرداخت و ارسال رسید، بعد رزرو تایم و اعلام تاریخ؛ هرگز نگو پرداخت بعد از ساخت ویدیوئه. "
+    "هیچ وعده‌ی نتیجه یا آماری نده (مثل «هزینه‌تون برمی‌گرده» یا «فروشتون بالا می‌ره»). برای ثبت سفارش و پرداخت فقط آیدی @about_admin1 رو بده؛ هرگز شماره کارت یا هیچ شماره‌ی حسابی نگو. "
     "ایموجی خیلی کم (حداکثر یکی).\n"
     "قوانین:\n{rules}"
 )
@@ -37,14 +39,13 @@ async def reply(chat_id, user_text):
         text = await _reply(chat_id, user_text)
         if prices_ok(text):
             return text
-    return "قیمت‌ها: پست تبلیغاتی دائمی ۲ میلیون تومان، استوری گویشی ۱ میلیون تومان، استوری بنری ۵۰۰ هزار تومان 🌹 کدوم رو براتون ثبت کنم؟"
+    return "قیمت‌ها: پست تبلیغاتی دائمی ۲ میلیون تومان، استوری گویشی ۱ میلیون تومان، استوری بنری ۵۰۰ هزار تومان 🌹 برای ثبت سفارش به @about_admin1 پیام بدید."
 
 
 async def _reply(chat_id, user_text):
     chunks = db.retrieve(user_text)
     info = "\n".join(f"[{c['title']}] {c['content']}" for c in chunks)
-    paid = "مشتری پرداخت کرده (رسید تأیید شده)." if db.is_paid(chat_id) else "مشتری هنوز پرداخت تأیید‌شده‌ای ندارد."
-    system = SYSTEM.format(rules=db.rules_text()) + "\n\n" + PRICES + f"\n\nوضعیت: {paid}\n\nاطلاعات مرتبط:\n{info}"
+    system = SYSTEM.format(rules=db.rules_text()) + "\n\n" + PRICES + f"\n\nاطلاعات مرتبط:\n{info}"
 
     contents = [{"role": "user" if h["role"] == "user" else "model", "parts": [{"text": h["text"]}]}
                 for h in db.history(chat_id)]

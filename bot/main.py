@@ -21,7 +21,6 @@ DESCRIPTION = (
 SHORT = "تبلیغات حرفه‌ای کسب‌وکار شما در پیج «درباره اصفهان»"
 MENU = {
     "price": "تعرفه تبلیغات چنده؟",
-    "pay": "میخوام سفارش بدم، پرداخت چطوریه؟",
 }
 KEYBOARD = InlineKeyboardMarkup([
     [InlineKeyboardButton("💰 تعرفه‌ها", callback_data="price")],
@@ -37,6 +36,30 @@ PRICE_LIST = """تعرفه تبلیغات✅
 
 3️⃣هزینه استوری بنر شما با تگ
 🔸۵۰۰هزار تومان"""
+ADMIN_ID_TG = "@about_admin1"
+ORDER_INTRO = """✅ خدمات تبلیغات پیج «درباره اصفهان»
+
+1️⃣ پست تبلیغاتی دائمی
+ساخت ویدیوی اختصاصی برای کسب‌وکار شما؛ سناریونویسی، گویندگی و تدوین توسط تیم ما و انتشار دائمی در پیج.
+
+2️⃣ استوری گویشی
+ساخت استوری با گویندگی و توضیحات کامل با کمک هوش مصنوعی.
+
+3️⃣ استوری بنری
+انتشار بنر آماده‌ی شما در استوری همراه با تگ پیج شما.
+
+همه‌ی مراحل غیرحضوری انجامه 🌹
+کدوم رو می‌خواید؟ 👇"""
+ORDER_DONE = (
+    "عالیه 🌹 برای ثبت سفارش «{svc}» همین الان به ادمین پیام بدید:\n\n"
+    + ADMIN_ID_TG + "\n\nسفارش و پرداخت فقط از طریق ایشون انجام می‌شه."
+)
+SERVICES = {"o_post": "پست تبلیغاتی دائمی", "o_vstory": "استوری گویشی", "o_bstory": "استوری بنری"}
+ORDER_KEYBOARD = InlineKeyboardMarkup([
+    [InlineKeyboardButton("🎬 پست تبلیغاتی دائمی", callback_data="o_post")],
+    [InlineKeyboardButton("🎙 استوری گویشی", callback_data="o_vstory")],
+    [InlineKeyboardButton("🖼 استوری بنری", callback_data="o_bstory")],
+])
 FALLBACK = "ببخشید یه مشکل فنی پیش اومد 🌹 ادمین به‌زودی پاسخ می‌ده."
 
 
@@ -52,6 +75,19 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def on_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
+    if q.data == "pay":
+        cid = q.message.chat_id
+        db.upsert_customer(cid, q.from_user.full_name)
+        db.add_message(cid, "model", ORDER_INTRO)
+        await q.message.reply_text(ORDER_INTRO, reply_markup=ORDER_KEYBOARD)
+        return
+    if q.data in SERVICES:
+        cid = q.message.chat_id
+        text = ORDER_DONE.format(svc=SERVICES[q.data])
+        db.add_message(cid, "user", "میخوام " + SERVICES[q.data] + " سفارش بدم")
+        db.add_message(cid, "model", text)
+        await q.message.reply_text(text)
+        return
     if q.data == "price":
         cid = q.message.chat_id
         db.upsert_customer(cid, q.from_user.full_name)
@@ -80,22 +116,8 @@ async def respond(chat_id, text, name, ctx, message):
 
 
 async def on_media(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    """Photos/docs are treated as receipts: forwarded to admin, who confirms with /paid."""
-    chat_id = update.effective_chat.id
-    await update.message.reply_text("رسید دریافت شد 🌹 بعد از تأیید، اولین تایم خالی رو رزرو و تاریخ انتشار رو اعلام می‌کنم.")
-    if ADMIN_ID:
-        await update.message.forward(ADMIN_ID)
-        await ctx.bot.send_message(
-            ADMIN_ID, f"رسید/فایل از {update.effective_user.full_name}\nبرای تأیید پرداخت: /paid {chat_id}")
-
-
-async def paid(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    if update.effective_chat.id != ADMIN_ID or not ctx.args:
-        return
-    cid = int(ctx.args[0])
-    db.set_paid(cid)
-    await update.message.reply_text(f"پرداخت {cid} ثبت شد.")
-    await ctx.bot.send_message(cid, "پرداخت شما تأیید شد 🌹 اولین تایم خالی رو رزرو می‌کنم و تاریخ دقیق انتشار رو بهتون اعلام می‌کنم.")
+    await update.message.reply_text(
+        "ممنون 🌹 ارسال فایل و رسید و ثبت سفارش فقط از طریق ادمین انجام می‌شه: " + ADMIN_ID_TG)
 
 
 async def setup(app):
@@ -108,7 +130,6 @@ def main():
     db.seed()
     app = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"]).post_init(setup).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("paid", paid))
     app.add_handler(CallbackQueryHandler(on_button))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL, on_media))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))

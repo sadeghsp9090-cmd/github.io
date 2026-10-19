@@ -17,8 +17,10 @@ FALLBACK = "ببخشید یه مشکل فنی پیش اومد 🌹 ادمین ب
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     u = update.effective_user
     db.upsert_customer(update.effective_chat.id, u.full_name)
-    await update.message.reply_text(
-        "سلام 🌹 به پیج «درباره اصفهان» خوش اومدید. برای تبلیغ پست دائمی، استوری گویشی یا استوری بنری راهنماییتون کنم؟")
+    greeting = "سلام 🌹 به پیج «درباره اصفهان» خوش اومدید! کسب‌وکارتون چیه؟ بگید تا بهترین نوع تبلیغ رو بهتون پیشنهاد بدم."
+    if not db.history(update.effective_chat.id):
+        db.add_message(update.effective_chat.id, "model", greeting)
+    await update.message.reply_text(greeting)
 
 
 async def on_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):

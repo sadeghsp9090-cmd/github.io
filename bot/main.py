@@ -31,6 +31,16 @@ KEYBOARD = InlineKeyboardMarkup([
      InlineKeyboardButton("📱 استوری", callback_data="story")],
     [InlineKeyboardButton("✅ ثبت سفارش", callback_data="pay")],
 ])
+PRICE_LIST = """تعرفه تبلیغات✅
+
+1️⃣پست با تولید محتوا اختصاصی به صورت دائمی در پیج
+🔸۲میلیون تومان (ویژه😍)
+
+2️⃣استوری گویشی و توضیحات کامل ساخت با هوش مصنوعی
+🔸۱ میلیون تومان
+
+3️⃣هزینه استوری بنر شما با تگ
+🔸۵۰۰هزار تومان"""
 FALLBACK = "ببخشید یه مشکل فنی پیش اومد 🌹 ادمین به‌زودی پاسخ می‌ده."
 
 
@@ -46,6 +56,13 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 async def on_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
+    if q.data == "price":
+        cid = q.message.chat_id
+        db.upsert_customer(cid, q.from_user.full_name)
+        db.add_message(cid, "user", MENU["price"])
+        db.add_message(cid, "model", PRICE_LIST)
+        await q.message.reply_text(PRICE_LIST)
+        return
     await respond(q.message.chat_id, MENU[q.data], q.from_user.full_name, ctx, q.message)
 
 

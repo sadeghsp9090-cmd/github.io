@@ -1,6 +1,20 @@
 import os
+import re
 import httpx
 import db
+
+PRICES = "قیمت‌های قطعی (هیچ عدد دیگه‌ای نگو): پست تبلیغاتی دائمی = ۲ میلیون تومان | استوری گویشی = ۱ میلیون تومان | استوری بنری = ۵۰۰ هزار تومان."
+_FA = str.maketrans("۰۱۲۳۴۵۶۷۸۹٫", "0123456789.")
+_ALLOWED = {("2", "میلیون"), ("1", "میلیون"), ("500", "هزار")}
+
+
+def prices_ok(text):
+    """Reject answers that quote a money amount other than the real tariffs."""
+    t = text.translate(_FA)
+    for num, unit in re.findall(r"(\d+(?:\.\d+)?)\s*(میلیون|هزار)", t):
+        if (num, unit) not in _ALLOWED:
+            return False
+    return True
 
 URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
@@ -19,10 +33,18 @@ SYSTEM = (
 
 
 async def reply(chat_id, user_text):
+    for _ in range(2):
+        text = await _reply(chat_id, user_text)
+        if prices_ok(text):
+            return text
+    return "قیمت‌ها: پست تبلیغاتی دائمی ۲ میلیون تومان، استوری گویشی ۱ میلیون تومان، استوری بنری ۵۰۰ هزار تومان 🌹 کدوم رو براتون ثبت کنم؟"
+
+
+async def _reply(chat_id, user_text):
     chunks = db.retrieve(user_text)
     info = "\n".join(f"[{c['title']}] {c['content']}" for c in chunks)
     paid = "مشتری پرداخت کرده (رسید تأیید شده)." if db.is_paid(chat_id) else "مشتری هنوز پرداخت تأیید‌شده‌ای ندارد."
-    system = SYSTEM.format(rules=db.rules_text()) + f"\n\nوضعیت: {paid}\n\nاطلاعات مرتبط:\n{info}"
+    system = SYSTEM.format(rules=db.rules_text()) + "\n\n" + PRICES + f"\n\nوضعیت: {paid}\n\nاطلاعات مرتبط:\n{info}"
 
     contents = [{"role": "user" if h["role"] == "user" else "model", "parts": [{"text": h["text"]}]}
                 for h in db.history(chat_id)]
@@ -31,7 +53,7 @@ async def reply(chat_id, user_text):
     body = {
         "systemInstruction": {"parts": [{"text": system}]},
         "contents": contents,
-        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 300},
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": 300},
     }
     model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
     for attempt in range(3):

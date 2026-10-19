@@ -27,7 +27,7 @@ async def reply(chat_id, user_text):
         "contents": contents,
         "generationConfig": {"temperature": 0.4, "maxOutputTokens": 300},
     }
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
     async with httpx.AsyncClient(timeout=30) as cli:
         r = await cli.post(URL.format(model=model), json=body,
                            headers={"x-goog-api-key": os.environ["GEMINI_API_KEY"]})
